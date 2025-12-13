@@ -1,4 +1,5 @@
 env: "dev"
 storage_path: "storage/storage.db"
+llm_base_url: "http://localhost:11434/api"
 http_server:
   address: "localhost:8082"

@@ -2,7 +2,6 @@ package main
 
 import (
 	"context"
-	"fmt"
 	"log"
 	"log/slog"
 	"net/http"
@@ -12,6 +11,8 @@ import (
 	"time"
 
 	"github.com/manisprasad/llm-serve/internal/config"
+	"github.com/manisprasad/llm-serve/internal/http/handlers/llm"
+	"github.com/rs/cors"
 )
 
 func main() {
@@ -19,22 +20,29 @@ func main() {
 
 	router := http.NewServeMux()
 
-	router.HandleFunc("GET /", func(w http.ResponseWriter, r *http.Request) {
-		w.Write([]byte("Lamma api is working fine"))
-	})
+	// Correct path, no method in HandleFunc
+	router.HandleFunc("/api/chat", llm.New(cfg.LlmBaseUrl))
+
+	// Wrap the router with rs/cors
+	handler := cors.New(cors.Options{
+		AllowedOrigins:   []string{"*"}, // allow all origins
+		AllowedMethods:   []string{"GET", "POST", "OPTIONS"},
+		AllowedHeaders:   []string{"Content-Type"},
+		AllowCredentials: false,
+	}).Handler(router)
 
 	server := http.Server{
 		Addr:    cfg.HttpServer.Address,
-		Handler: router,
+		Handler: handler,
 	}
-	fmt.Printf("server is running on: %s", cfg.Address)
+
+	slog.Info("Server is running", slog.String("address", cfg.HttpServer.Address))
 
 	done := make(chan os.Signal, 1)
 	signal.Notify(done, os.Interrupt, syscall.SIGINT, syscall.SIGTERM)
 	go func() {
-		error := server.ListenAndServe()
-		if error != nil {
-			log.Fatalf("Failed to start the server %s", error.Error())
+		if err := server.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+			log.Fatalf("Failed to start server: %s", err.Error())
 		}
 	}()
 
@@ -48,4 +56,5 @@ func main() {
 		slog.Error("Failed to shutdown server gracefully", slog.String("error", err.Error()))
 	}
 
+	slog.Info("Server shutdown successfully")
 }
