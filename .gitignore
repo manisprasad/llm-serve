@@ -32,6 +32,6 @@ go.work.sum
 # .vscode/
 
 
-# databse
-storage
-/config
+# # databse
+# storage
+# /config
